@@ -1,3 +1,4 @@
+import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -146,7 +147,19 @@ GLYPHS = {
     "alert": glyph_alert,
 }
 
-PANEL_COLORS = ["#2f6fed", "#d62828", "#2a9d8f", "#f2994a"]
+PANEL_COLORS = ["#c97b4a", "#5f8f7a", "#4f7fa3", "#b45a5a"]  # 지브리풍 톤다운 파스텔 팔레트
+PANEL_BG = "#faf3e6"   # 따뜻한 종이 배경색
+PANEL_HILL = "#cfe0c4"  # 부드러운 언덕색
+PANEL_CLOUD = "#ffffff"  # 구름색
+
+
+def draw_panel_background(ax):
+    """지브리풍 분위기를 내기 위한 배경(따뜻한 배경 + 언덕 + 구름)"""
+    ax.add_patch(mpatches.FancyBboxPatch((-2.3, -2.3), 4.6, 4.6, boxstyle="round,pad=0,rounding_size=0.6",
+                                          linewidth=0, facecolor=PANEL_BG, zorder=0))
+    ax.add_patch(plt.Circle((0, -2.7), 2.5, color=PANEL_HILL, alpha=0.7, zorder=1))
+    for cx, cy, r in [(-1.5, 1.7, 0.5), (-1.05, 1.9, 0.4), (-1.85, 1.6, 0.32)]:
+        ax.add_patch(plt.Circle((cx, cy), r, color=PANEL_CLOUD, alpha=0.75, zorder=1))
 
 PICTO = {
     "심정지 (심폐소생술)": [("check", "반응·호흡 확인"), ("call", "119 신고"), ("compress", "가슴압박 30회"), ("aed", "AED 사용")],
@@ -161,27 +174,43 @@ PICTO = {
 }
 
 
+ILLUSTRATION_DIR = "illustrations"  # 이 폴더에 icon_key.png(예: call.png)를 넣으면 그림 대신 사용됩니다
+
+
+def get_custom_illustration_path(icon_key):
+    path = os.path.join(ILLUSTRATION_DIR, f"{icon_key}.png")
+    return path if os.path.exists(path) else None
+
+
 @st.cache_data(show_spinner=False)
 def build_icon_figure(icon_key, color):
-    """아이콘 도형만 그린 작은 figure를 반환합니다.
+    """지브리풍 배경(따뜻한 배경·언덕·구름) 위에 아이콘 도형을 그린 작은 figure를 반환합니다.
     (그림 안에 한글 텍스트를 넣지 않아, 폰트에 한글이 없는 환경에서도 깨지지 않습니다.)"""
     fig, ax = plt.subplots(figsize=(1.8, 1.8))
     ax.set_xlim(-2.3, 2.3)
     ax.set_ylim(-2.3, 2.3)
     ax.set_aspect("equal")
     ax.axis("off")
+    draw_panel_background(ax)
     GLYPHS[icon_key](ax, color)
+    fig.patch.set_facecolor(PANEL_BG)
     fig.tight_layout(pad=0.3)
     return fig
 
 
 def get_pictogram_items(situation_name):
-    """(figure, 캡션) 4개를 반환. 캡션은 실제 화면에 st로 그릴 텍스트라 한글이 깨지지 않습니다."""
+    """(종류, 이미지경로 또는 figure, 캡션) 4개를 반환.
+    illustrations/ 폴더에 지브리풍으로 직접 제작한 PNG가 있으면 그것을 우선 사용하고,
+    없으면 코드로 그린 배경+아이콘 figure를 사용합니다."""
     items = []
     for idx, (icon_key, caption) in enumerate(PICTO[situation_name]):
         color = PANEL_COLORS[idx % len(PANEL_COLORS)]
-        fig = build_icon_figure(icon_key, color)
-        items.append((fig, caption))
+        custom_path = get_custom_illustration_path(icon_key)
+        if custom_path:
+            items.append(("image", custom_path, caption))
+        else:
+            fig = build_icon_figure(icon_key, color)
+            items.append(("figure", fig, caption))
     return items
 
 # ============================================================================
@@ -371,9 +400,13 @@ def render_situation(name):
         row1 = st.columns(2)
         row2 = st.columns(2)
         grid_cols = row1 + row2
-        for i, (fig, caption) in enumerate(items):
+        for i, item in enumerate(items):
+            kind, payload, caption = item
             with grid_cols[i]:
-                st.pyplot(fig, use_container_width=True)
+                if kind == "image":
+                    st.image(payload, use_container_width=True)
+                else:
+                    st.pyplot(payload, use_container_width=True)
                 st.markdown(
                     f"<p style='text-align:center; font-weight:600; margin-top:-8px;'>{i + 1}. {caption}</p>",
                     unsafe_allow_html=True,
