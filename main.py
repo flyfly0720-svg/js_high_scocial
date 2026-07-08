@@ -10,132 +10,202 @@ import streamlit as st
 st.set_page_config(page_title="응급상황 대응 매뉴얼", layout="wide")
 
 # ============================================================================
-# 4컷 픽토그램: 상황을 한눈에 떠올릴 수 있도록 간단한 도형 아이콘으로 표현
+# 4컷 픽토그램: 올림픽 종목 아이콘처럼 단순한 실루엣 + 단색 컬러 타일로 표현
 # ============================================================================
 
+TILE_COLORS = ["#0d3b66", "#c1121f", "#118a55", "#e2711d"]  # 스텝별 컬러 타일 배경
+FIGURE_COLOR = "#ffffff"  # 타일 위에 올라가는 실루엣 색 (흰색 단색)
+
+
+def draw_tile_background(ax, color):
+    ax.add_patch(mpatches.FancyBboxPatch((-2.3, -2.3), 4.6, 4.6, boxstyle="round,pad=0,rounding_size=0.35",
+                                          linewidth=0, facecolor=color, zorder=0))
+
+
+# ----------------------------------------------------------------------------
+# 사람 실루엣 (올림픽 픽토그램처럼 원 머리 + 굵은 캡슐 팔다리로 단순화)
+# ----------------------------------------------------------------------------
+
+def person(ax, x, y, pose, color, scale=1.0, lw_body=15, lw_limb=11):
+    s = scale
+    head_r = 0.38 * s
+    head_y = y + 1.5 * s
+    ax.add_patch(plt.Circle((x, head_y), head_r, color=color, zorder=2))
+    top = (x, head_y - head_r - 0.05 * s)
+    bottom = (x, y + 0.1 * s)
+    ax.plot([top[0], bottom[0]], [top[1], bottom[1]], color=color, lw=lw_body * s,
+            solid_capstyle="round", zorder=2)
+
+    def limb(p1, p2, lw=lw_limb):
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=color, lw=lw * s, solid_capstyle="round", zorder=2)
+
+    if pose == "stand":
+        limb(top, (x - 0.5, y + 0.4 * s))
+        limb(top, (x + 0.5, y + 0.4 * s))
+        limb(bottom, (x - 0.4, y - 1.3 * s))
+        limb(bottom, (x + 0.4, y - 1.3 * s))
+    elif pose == "arms_up":
+        limb(top, (x - 0.55, top[1] + 0.9 * s))
+        limb(top, (x + 0.55, top[1] + 0.9 * s))
+        limb(bottom, (x - 0.4, y - 1.3 * s))
+        limb(bottom, (x + 0.4, y - 1.3 * s))
+    elif pose == "run":
+        limb(top, (x + 0.75, y + 0.5 * s))
+        limb(top, (x - 0.55, y - 0.05 * s))
+        limb(bottom, (x + 0.75, y - 1.1 * s))
+        limb(bottom, (x - 0.55, y - 0.55 * s))
+    elif pose == "kneel":
+        limb(top, (x - 0.5, y - 0.25 * s))
+        limb(bottom, (x + 0.3, y - 0.3 * s))
+        limb(bottom, (x - 0.35, y - 1.1 * s))
+    elif pose == "push":
+        limb(top, (x + 0.95, y + 0.15 * s))
+        limb(bottom, (x - 0.4, y - 1.3 * s))
+        limb(bottom, (x + 0.4, y - 1.3 * s))
+    elif pose == "crouch_low":
+        limb(top, (x - 0.5, y - 0.15 * s))
+        limb(top, (x + 0.5, y - 0.15 * s))
+        limb(bottom, (x - 0.3, y - 0.65 * s))
+        limb(bottom, (x + 0.3, y - 0.65 * s))
+    return top, bottom
+
+
+def person_lying(ax, x, y, color, scale=1.0, bent_leg=False):
+    s = scale
+    ax.add_patch(plt.Circle((x - 1.3 * s, y), 0.36 * s, color=color, zorder=2))
+    ax.plot([x - 0.95 * s, x + 1.2 * s], [y, y], color=color, lw=16 * s, solid_capstyle="round", zorder=2)
+    if bent_leg:
+        ax.plot([x + 1.2 * s, x + 1.0 * s], [y, y - 0.7 * s], color=color, lw=13 * s,
+                 solid_capstyle="round", zorder=2)
+
+
+# ----------------------------------------------------------------------------
+# 개별 픽토그램 (모두 단색 실루엣 + 단순 도형)
+# ----------------------------------------------------------------------------
+
 def glyph_call(ax, color):
-    box = mpatches.FancyBboxPatch((-0.7, -1.4), 1.4, 2.8, boxstyle="round,pad=0.05,rounding_size=0.3",
-                                   linewidth=0, facecolor=color)
+    box = mpatches.FancyBboxPatch((-0.7, -1.3), 1.3, 2.6, boxstyle="round,pad=0.02,rounding_size=0.35",
+                                   linewidth=0, facecolor=color, zorder=2)
     ax.add_patch(box)
-    ax.add_patch(plt.Circle((0, -1.0), 0.15, color="white"))
-    for r in (1.3, 1.9):
-        ax.add_patch(mpatches.Arc((-0.7, 0), r * 2, r * 2, angle=0, theta1=300, theta2=60, color=color, lw=3))
+    for r in (1.1, 1.6):
+        ax.add_patch(mpatches.Arc((-0.05, 0), r * 2, r * 2, angle=0, theta1=300, theta2=60, color=color, lw=5, zorder=2))
 
 
 def glyph_check(ax, color):
-    ax.text(0, 0, "?", fontsize=60, ha="center", va="center", color=color, fontweight="bold")
+    person_lying(ax, -0.3, -1.0, color, scale=0.75)
+    person(ax, -0.3, -0.1, "kneel", color, scale=0.7)
 
 
 def glyph_compress(ax, color):
-    ax.add_patch(plt.Rectangle((-1, 0.3), 2, 0.6, color=color))
-    ax.annotate("", xy=(0, -1.3), xytext=(0, 0.2), arrowprops=dict(arrowstyle="-|>", color=color, lw=4))
-    ax.annotate("", xy=(-0.9, -1.1), xytext=(-0.9, 0), arrowprops=dict(arrowstyle="-|>", color=color, lw=3))
-    ax.annotate("", xy=(0.9, -1.1), xytext=(0.9, 0), arrowprops=dict(arrowstyle="-|>", color=color, lw=3))
+    person_lying(ax, 0, -1.4, color, scale=0.8)
+    person(ax, 0, -0.2, "push", color, scale=0.65)
+    ax.annotate("", xy=(0, -1.1), xytext=(0, -0.5), arrowprops=dict(arrowstyle="-|>", color=color, lw=4))
 
 
 def glyph_aed(ax, color):
     t = np.linspace(0, 2 * np.pi, 100)
-    x = 16 * np.sin(t) ** 3 / 16
-    y = (13 * np.cos(t) - 5 * np.cos(2 * t) - 2 * np.cos(3 * t) - np.cos(4 * t)) / 16
-    ax.fill(x * 1.3, y * 1.3, color=color)
+    hx = 16 * np.sin(t) ** 3 / 16
+    hy = (13 * np.cos(t) - 5 * np.cos(2 * t) - 2 * np.cos(3 * t) - np.cos(4 * t)) / 16
+    ax.fill(hx * 1.5, hy * 1.5, color=color, zorder=2)
 
 
 def glyph_heimlich(ax, color):
-    ax.annotate("", xy=(0, 1.7), xytext=(0, -1.7), arrowprops=dict(arrowstyle="-|>", color=color, lw=6))
-    ax.add_patch(plt.Circle((0, -1.7), 0.35, color=color))
+    person(ax, 0, -1.0, "push", color, scale=0.85)
+    ax.add_patch(plt.Circle((0.9, -1.0), 0.3, color=color, zorder=2))
+    ax.annotate("", xy=(0.9, 0.8), xytext=(0.9, -0.6), arrowprops=dict(arrowstyle="-|>", color=color, lw=6))
 
 
 def glyph_water(ax, color):
-    x = np.linspace(-1.6, 1.6, 100)
-    for i, dy in enumerate([0.7, 0, -0.7]):
-        y = 0.3 * np.sin(3 * x + i) + dy
-        ax.plot(x, y, color=color, lw=4)
+    for cx, cy in [(-0.9, 0.6), (0, 1.1), (0.9, 0.4)]:
+        drop = plt.Polygon([(cx, cy + 0.6), (cx - 0.32, cy - 0.2), (cx, cy - 0.5), (cx + 0.32, cy - 0.2)],
+                            closed=True, color=color, zorder=2)
+        ax.add_patch(drop)
 
 
 def glyph_bandage(ax, color):
-    ax.add_patch(plt.Rectangle((-1.2, -0.35), 2.4, 0.7, color=color))
-    ax.add_patch(plt.Rectangle((-0.35, -1.2), 0.7, 2.4, color=color))
+    ax.add_patch(plt.Rectangle((-1.2, -0.32), 2.4, 0.64, color=color, zorder=2))
+    ax.add_patch(plt.Rectangle((-0.32, -1.2), 0.64, 2.4, color=color, zorder=2))
 
 
 def glyph_elevate(ax, color):
-    ax.annotate("", xy=(0, 1.7), xytext=(0, -1.7), arrowprops=dict(arrowstyle="-|>", color=color, lw=6))
+    person(ax, 0, -1.4, "arms_up", color, scale=0.85)
 
 
 def glyph_shade(ax, color):
-    ax.add_patch(plt.Polygon([(-1.2, 0.6), (1.2, 0.6), (0, 1.9)], closed=True, color=color))
-    ax.plot([0, 0], [0.6, -1.5], lw=6, color=color)
+    ax.add_patch(plt.Polygon([(-1.1, 0.5), (1.1, 0.5), (0, 1.9)], closed=True, color=color, zorder=2))
+    ax.plot([0, 0], [0.5, -1.5], lw=8, color=color, solid_capstyle="round", zorder=2)
 
 
 def glyph_cutpower(ax, color):
-    ax.add_patch(plt.Rectangle((-1, -1.6), 2, 3.2, fill=False, lw=4, edgecolor=color))
-    ax.plot([0, 0.7], [-0.3, 1.1], lw=5, color=color)
-    ax.add_patch(plt.Circle((0, -0.3), 0.12, color=color))
+    ax.add_patch(mpatches.FancyBboxPatch((-1.0, -1.5), 2.0, 3.0, boxstyle="round,pad=0.02,rounding_size=0.25",
+                                          linewidth=0, facecolor=color, zorder=2))
+    bolt = plt.Polygon([(0.2, 1.0), (-0.35, 0.0), (0.05, 0.0), (-0.25, -1.0), (0.5, 0.15), (0.1, 0.15)],
+                        closed=True, color=TILE_COLORS[0], zorder=3)
+    ax.add_patch(bolt)
+    ax.plot([-1.4, 1.4], [-1.4, 1.4], color=color, lw=6, solid_capstyle="round", zorder=4)
 
 
 def glyph_insulate(ax, color):
-    ax.plot([-1.7, 1.7], [0.6, -0.6], lw=3, color=color)
-    ax.plot([0, 1.3], [0, 1.5], lw=5, color=color)
+    person(ax, -0.6, -1.2, "push", color, scale=0.6)
+    ax.plot([0.1, 1.8], [-0.4, 0.5], lw=6, color=color, solid_capstyle="round", zorder=2)
 
 
 def glyph_crouch(ax, color):
-    ax.add_patch(plt.Circle((-0.8, 0.7), 0.4, fill=False, lw=4, edgecolor=color))
-    ax.plot([-0.8, 0.8], [0.3, -0.3], lw=5, color=color)
-    ax.plot([0.8, 1.5], [-0.3, -0.1], lw=5, color=color)
+    person(ax, 0, -1.0, "crouch_low", color, scale=0.9)
     for i in range(3):
-        xs = np.linspace(-1.6, 1.6, 30)
-        ys = 0.15 * np.sin(6 * xs + i) + 1.6 + i * 0.4
-        ax.plot(xs, ys, color=color, lw=2, alpha=0.6)
+        y0 = 1.0 + i * 0.4
+        ax.plot([-1.4, 1.4], [y0, y0], color=color, lw=5, alpha=0.55, solid_capstyle="round", zorder=1)
 
 
 def glyph_exitdoor(ax, color):
-    ax.add_patch(plt.Rectangle((-1.3, -1.6), 1.6, 3.2, fill=False, lw=4, edgecolor=color))
-    ax.annotate("", xy=(1.9, 0), xytext=(0.3, 0), arrowprops=dict(arrowstyle="-|>", color=color, lw=5))
+    person(ax, -0.5, -1.4, "run", color, scale=0.85)
+    ax.annotate("", xy=(1.9, -0.2), xytext=(0.5, -0.2), arrowprops=dict(arrowstyle="-|>", color=color, lw=6))
 
 
 def glyph_caution(ax, color):
-    ax.add_patch(plt.Polygon([(-1.5, -1.2), (1.5, -1.2), (0, 1.6)], closed=True, fill=False, lw=5, edgecolor=color))
-    ax.text(0, -0.3, "!", fontsize=40, ha="center", va="center", color=color, fontweight="bold")
+    ax.add_patch(plt.Polygon([(-1.5, -1.2), (1.5, -1.2), (0, 1.6)], closed=True, color=color, zorder=2))
+    ax.add_patch(plt.Rectangle((-0.12, -0.7), 0.24, 1.0, color=TILE_COLORS[0], zorder=3))
+    ax.add_patch(plt.Circle((0, -0.95), 0.15, color=TILE_COLORS[0], zorder=3))
 
 
 def glyph_fire(ax, color):
     verts = [(-0.6, -1.5), (-0.9, 0.2), (-0.2, 0.4), (-0.4, 1.0), (0.3, 0.6), (0.2, 1.7), (0.9, 0.3), (0.5, -0.3), (0.7, -1.5)]
-    ax.add_patch(plt.Polygon(verts, closed=True, color=color))
+    ax.add_patch(plt.Polygon(verts, closed=True, color=color, zorder=2))
 
 
 def glyph_shelter(ax, color):
-    ax.add_patch(plt.Rectangle((-1.7, 0.4), 3.4, 0.5, color=color))
-    ax.plot([-1.4, -1.4], [0.4, -1.6], lw=5, color=color)
-    ax.plot([1.4, 1.4], [0.4, -1.6], lw=5, color=color)
+    ax.add_patch(plt.Rectangle((-1.6, 0.5), 3.2, 0.45, color=color, zorder=2))
+    ax.plot([-1.3, -1.3], [0.5, -1.5], lw=8, color=color, solid_capstyle="round", zorder=2)
+    ax.plot([1.3, 1.3], [0.5, -1.5], lw=8, color=color, solid_capstyle="round", zorder=2)
+    person(ax, 0, -1.4, "crouch_low", color, scale=0.6)
 
 
 def glyph_openspace(ax, color):
-    ax.plot([-1.8, 1.8], [-1.2, -1.2], lw=4, color=color)
-    ax.add_patch(plt.Circle((0, -0.3), 0.35, fill=False, lw=4, edgecolor=color))
-    ax.plot([0, 0], [-0.65, -1.2], lw=4, color=color)
-    ax.annotate("", xy=(1.6, -0.3), xytext=(0.5, -0.3), arrowprops=dict(arrowstyle="-|>", color=color, lw=3))
+    person(ax, -0.4, -1.4, "run", color, scale=0.75)
+    ax.plot([-1.9, 1.9], [-1.85, -1.85], color=color, lw=5, solid_capstyle="round", zorder=2)
+    ax.annotate("", xy=(1.7, -0.6), xytext=(0.4, -0.6), arrowprops=dict(arrowstyle="-|>", color=color, lw=5))
 
 
 def glyph_throwring(ax, color):
-    ax.add_patch(plt.Circle((0, 0), 1.4, fill=False, lw=6, edgecolor=color))
-    ax.add_patch(plt.Circle((0, 0), 0.7, fill=False, lw=6, edgecolor=color))
+    outer = plt.Circle((0, 0), 1.5, color=color, zorder=2)
+    inner = plt.Circle((0, 0), 0.75, color=TILE_COLORS[0], zorder=3)
+    ax.add_patch(outer)
+    ax.add_patch(inner)
 
 
 def glyph_recovery(ax, color):
-    ax.add_patch(plt.Circle((-1.2, -0.6), 0.5, fill=False, lw=4, edgecolor=color))
-    ax.plot([-0.7, 1.3], [-0.6, -0.6], lw=5, color=color)
-    ax.plot([1.3, 1.6], [-0.6, -0.05], lw=4, color=color)
+    person_lying(ax, 0, -0.2, color, scale=1.0, bent_leg=True)
 
 
 def glyph_press(ax, color):
-    ax.add_patch(plt.Rectangle((-1.1, -0.4), 2.2, 0.8, color=color))
-    ax.annotate("", xy=(0, 0.2), xytext=(0, 1.4), arrowprops=dict(arrowstyle="-|>", color=color, lw=4))
+    ax.add_patch(plt.Rectangle((-1.1, -0.35), 2.2, 0.7, color=color, zorder=2))
+    ax.annotate("", xy=(0, 0.15), xytext=(0, 1.3), arrowprops=dict(arrowstyle="-|>", color=color, lw=5))
 
 
 def glyph_alert(ax, color):
-    ax.add_patch(mpatches.FancyBboxPatch((-1.6, -0.2), 3.2, 1.6, boxstyle="round,pad=0.1",
-                                          fill=False, lw=4, edgecolor=color))
-    ax.plot([-0.4, -0.8], [-0.2, -1.3], lw=4, color=color)
-    ax.text(0, 0.6, "!", fontsize=36, ha="center", va="center", color=color, fontweight="bold")
+    person(ax, -0.4, -1.3, "stand", color, scale=0.8)
+    ax.add_patch(plt.Polygon([(0.5, 0.4), (1.7, 0.9), (0.6, 1.3)], closed=True, color=color, zorder=2))
+    ax.text(0.95, 0.85, "!", fontsize=22, ha="center", va="center", color=TILE_COLORS[0], fontweight="bold", zorder=3)
 
 
 GLYPHS = {
@@ -146,20 +216,6 @@ GLYPHS = {
     "openspace": glyph_openspace, "throwring": glyph_throwring, "recovery": glyph_recovery, "press": glyph_press,
     "alert": glyph_alert,
 }
-
-PANEL_COLORS = ["#c97b4a", "#5f8f7a", "#4f7fa3", "#b45a5a"]  # 지브리풍 톤다운 파스텔 팔레트
-PANEL_BG = "#faf3e6"   # 따뜻한 종이 배경색
-PANEL_HILL = "#cfe0c4"  # 부드러운 언덕색
-PANEL_CLOUD = "#ffffff"  # 구름색
-
-
-def draw_panel_background(ax):
-    """지브리풍 분위기를 내기 위한 배경(따뜻한 배경 + 언덕 + 구름)"""
-    ax.add_patch(mpatches.FancyBboxPatch((-2.3, -2.3), 4.6, 4.6, boxstyle="round,pad=0,rounding_size=0.6",
-                                          linewidth=0, facecolor=PANEL_BG, zorder=0))
-    ax.add_patch(plt.Circle((0, -2.7), 2.5, color=PANEL_HILL, alpha=0.7, zorder=1))
-    for cx, cy, r in [(-1.5, 1.7, 0.5), (-1.05, 1.9, 0.4), (-1.85, 1.6, 0.32)]:
-        ax.add_patch(plt.Circle((cx, cy), r, color=PANEL_CLOUD, alpha=0.75, zorder=1))
 
 PICTO = {
     "심정지 (심폐소생술)": [("check", "반응·호흡 확인"), ("call", "119 신고"), ("compress", "가슴압박 30회"), ("aed", "AED 사용")],
@@ -173,8 +229,7 @@ PICTO = {
     "물놀이 안전사고 (익수)": [("throwring", "구조장비로 구조"), ("check", "반응 확인"), ("compress", "필요시 CPR"), ("recovery", "회복자세 유지")],
 }
 
-
-ILLUSTRATION_DIR = "illustrations"  # 이 폴더에 icon_key.png(예: call.png)를 넣으면 그림 대신 사용됩니다
+ILLUSTRATION_DIR = "illustrations"  # 필요하면 icon_key.png(예: call.png)를 넣어 커스텀 이미지로 대체할 수 있습니다
 
 
 def get_custom_illustration_path(icon_key):
@@ -183,35 +238,35 @@ def get_custom_illustration_path(icon_key):
 
 
 @st.cache_data(show_spinner=False)
-def build_icon_figure(icon_key, color):
-    """지브리풍 배경(따뜻한 배경·언덕·구름) 위에 아이콘 도형을 그린 작은 figure를 반환합니다.
-    (그림 안에 한글 텍스트를 넣지 않아, 폰트에 한글이 없는 환경에서도 깨지지 않습니다.)"""
+def build_icon_figure(icon_key, tile_color):
+    """올림픽 픽토그램 스타일: 컬러 타일 배경 + 흰색 단색 실루엣."""
     fig, ax = plt.subplots(figsize=(1.8, 1.8))
     ax.set_xlim(-2.3, 2.3)
     ax.set_ylim(-2.3, 2.3)
     ax.set_aspect("equal")
     ax.axis("off")
-    draw_panel_background(ax)
-    GLYPHS[icon_key](ax, color)
-    fig.patch.set_facecolor(PANEL_BG)
-    fig.tight_layout(pad=0.3)
+    draw_tile_background(ax, tile_color)
+    GLYPHS[icon_key](ax, FIGURE_COLOR)
+    fig.patch.set_facecolor(tile_color)
+    fig.tight_layout(pad=0.15)
     return fig
 
 
 def get_pictogram_items(situation_name):
     """(종류, 이미지경로 또는 figure, 캡션) 4개를 반환.
-    illustrations/ 폴더에 지브리풍으로 직접 제작한 PNG가 있으면 그것을 우선 사용하고,
-    없으면 코드로 그린 배경+아이콘 figure를 사용합니다."""
+    illustrations/ 폴더에 직접 만든 PNG가 있으면 그것을 우선 사용하고,
+    없으면 올림픽 픽토그램 스타일로 코드에서 그린 아이콘을 사용합니다."""
     items = []
     for idx, (icon_key, caption) in enumerate(PICTO[situation_name]):
-        color = PANEL_COLORS[idx % len(PANEL_COLORS)]
+        tile_color = TILE_COLORS[idx % len(TILE_COLORS)]
         custom_path = get_custom_illustration_path(icon_key)
         if custom_path:
             items.append(("image", custom_path, caption))
         else:
-            fig = build_icon_figure(icon_key, color)
+            fig = build_icon_figure(icon_key, tile_color)
             items.append(("figure", fig, caption))
     return items
+
 
 # ============================================================================
 # 데이터: 상황별 응급처치 (소방청·국민재난안전포털 자료를 참고해 일반인 기준으로 정리)
