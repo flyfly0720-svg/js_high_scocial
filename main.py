@@ -153,13 +153,38 @@ def glyph_alert(ax, color):
     ax.text(0, 0.6, "!", fontsize=36, ha="center", va="center", color=color, fontweight="bold")
 
 
+def glyph_eye(ax, color):
+    t = np.linspace(0, np.pi, 60)
+    x = 1.6 * np.cos(t)
+    y = 0.8 * np.sin(t)
+    ax.plot(x, y, color=color, lw=4)
+    ax.plot(x, -y, color=color, lw=4)
+    ax.add_patch(plt.Circle((0, 0), 0.35, fill=False, lw=4, edgecolor=color))
+    ax.add_patch(plt.Circle((0, 0), 0.12, color=color))
+
+
+def glyph_clock(ax, color):
+    ax.add_patch(plt.Circle((0, 0), 1.5, fill=False, lw=4, edgecolor=color))
+    ax.plot([0, 0], [0, 0.9], lw=3, color=color, solid_capstyle="round")
+    ax.plot([0, 0.7], [0, 0.25], lw=3, color=color, solid_capstyle="round")
+
+
+def glyph_weakness(ax, color):
+    ax.add_patch(plt.Circle((0, 1.3), 0.4, fill=False, lw=4, edgecolor=color))
+    ax.plot([0, 0], [0.9, -0.6], lw=4, color=color)
+    ax.plot([0, -0.9], [0.6, 0.1], lw=4, color=color)
+    ax.plot([0, 0.9], [0.6, -0.9], lw=4, color=color)  # 처진 팔(마비 쪽)
+    ax.plot([0, -0.4], [-0.6, -1.6], lw=4, color=color)
+    ax.plot([0, 0.4], [-0.6, -1.6], lw=4, color=color)
+
+
 GLYPHS = {
     "call": glyph_call, "check": glyph_check, "compress": glyph_compress, "aed": glyph_aed,
     "heimlich": glyph_heimlich, "water": glyph_water, "bandage": glyph_bandage, "elevate": glyph_elevate,
     "shade": glyph_shade, "cutpower": glyph_cutpower, "insulate": glyph_insulate, "crouch": glyph_crouch,
     "exitdoor": glyph_exitdoor, "caution": glyph_caution, "fire": glyph_fire, "shelter": glyph_shelter,
     "openspace": glyph_openspace, "throwring": glyph_throwring, "recovery": glyph_recovery, "press": glyph_press,
-    "alert": glyph_alert,
+    "alert": glyph_alert, "eye": glyph_eye, "clock": glyph_clock, "weakness": glyph_weakness,
 }
 
 PICTO = {
@@ -173,6 +198,7 @@ PICTO = {
     "지진": [("shelter", "탁자 아래 대피"), ("cutpower", "가스·전기 차단"), ("exitdoor", "출구 확보"), ("openspace", "넓은 공간 이동")],
     "물놀이 안전사고 (익수)": [("throwring", "구조장비로 구조"), ("check", "반응 확인"), ("compress", "필요시 CPR"), ("recovery", "회복자세 유지")],
     "혈관미주신경성 실신": [("check", "전조증상 인지"), ("recovery", "눕고 다리 올리기"), ("crouch", "좁은 공간 쪼그려 앉기"), ("call", "반복되면 병원 진료")],
+    "실신·발작·뇌졸중 구별 관찰": [("eye", "의식·눈 상태 관찰"), ("clock", "지속시간 확인"), ("weakness", "한쪽 마비·언어 확인"), ("call", "119 신고 & 증상 설명")],
 }
 
 ILLUSTRATION_DIR = "illustrations"  # 이 폴더에 icon_key.png(예: call.png)를 넣으면 그림 대신 사용됩니다
@@ -353,6 +379,21 @@ SITUATIONS = {
             "고령자의 첫 실신이나 평소와 다른 양상의 실신은 다른 질환의 신호일 수 있어 반드시 진료가 필요합니다.",
         ],
     },
+    "실신·발작·뇌졸중 구별 관찰": {
+        "call_119": "회복이 늦거나 마비·언어 이상이 있으면 즉시 119 신고",
+        "steps": [
+            "환자를 편평한 곳에 옆으로 눕혀 기도를 확보합니다.",
+            "의식을 잃은 시간이 얼마나 되는지 확인합니다.",
+            "팔다리를 떠는 경련이 있는지, 눈동자가 한쪽으로 쏠려 있는지 관찰합니다.",
+            "의식이 돌아오면 양쪽 팔다리 힘이 똑같은지, 말이 어눌하지 않은지 확인합니다.",
+            "짧게 회복되면 단순 실신 가능성이 높지만, 회복이 늦거나 마비·언어 이상이 있으면 즉시 119에 신고합니다.",
+            "119에 신고할 때는 의식 소실 시간, 경련 여부, 회복 후 상태를 구체적으로 설명합니다.",
+        ],
+        "cautions": [
+            "눈동자 위치만으로 스스로 진단하려 하지 말고, 관찰한 내용을 그대로 119에 전달합니다.",
+            "경련 중에는 입에 무언가를 물리지 않습니다.",
+        ],
+    },
 }
 
 # ============================================================================
@@ -369,7 +410,7 @@ LOCATIONS = {
         ],
     },
     "학교 / 사무실": {
-        "situations": ["화재", "지진", "심정지 (심폐소생술)", "출혈", "혈관미주신경성 실신"],
+        "situations": ["화재", "지진", "심정지 (심폐소생술)", "출혈", "혈관미주신경성 실신", "실신·발작·뇌졸중 구별 관찰"],
         "tips": [
             "비상구와 대피 경로를 미리 확인해 둡니다.",
             "건물 내 AED(자동심장충격기) 위치를 알아 둡니다.",
