@@ -1,7 +1,188 @@
-
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+plt.rcParams["figure.max_open_warning"] = 0
+import matplotlib.patches as mpatches
+import numpy as np
 import streamlit as st
 
 st.set_page_config(page_title="응급상황 대응 매뉴얼", layout="wide")
+
+# ============================================================================
+# 4컷 픽토그램: 상황을 한눈에 떠올릴 수 있도록 간단한 도형 아이콘으로 표현
+# ============================================================================
+
+def glyph_call(ax, color):
+    box = mpatches.FancyBboxPatch((-0.7, -1.4), 1.4, 2.8, boxstyle="round,pad=0.05,rounding_size=0.3",
+                                   linewidth=0, facecolor=color)
+    ax.add_patch(box)
+    ax.add_patch(plt.Circle((0, -1.0), 0.15, color="white"))
+    for r in (1.3, 1.9):
+        ax.add_patch(mpatches.Arc((-0.7, 0), r * 2, r * 2, angle=0, theta1=300, theta2=60, color=color, lw=3))
+
+
+def glyph_check(ax, color):
+    ax.text(0, 0, "?", fontsize=60, ha="center", va="center", color=color, fontweight="bold")
+
+
+def glyph_compress(ax, color):
+    ax.add_patch(plt.Rectangle((-1, 0.3), 2, 0.6, color=color))
+    ax.annotate("", xy=(0, -1.3), xytext=(0, 0.2), arrowprops=dict(arrowstyle="-|>", color=color, lw=4))
+    ax.annotate("", xy=(-0.9, -1.1), xytext=(-0.9, 0), arrowprops=dict(arrowstyle="-|>", color=color, lw=3))
+    ax.annotate("", xy=(0.9, -1.1), xytext=(0.9, 0), arrowprops=dict(arrowstyle="-|>", color=color, lw=3))
+
+
+def glyph_aed(ax, color):
+    t = np.linspace(0, 2 * np.pi, 100)
+    x = 16 * np.sin(t) ** 3 / 16
+    y = (13 * np.cos(t) - 5 * np.cos(2 * t) - 2 * np.cos(3 * t) - np.cos(4 * t)) / 16
+    ax.fill(x * 1.3, y * 1.3, color=color)
+
+
+def glyph_heimlich(ax, color):
+    ax.annotate("", xy=(0, 1.7), xytext=(0, -1.7), arrowprops=dict(arrowstyle="-|>", color=color, lw=6))
+    ax.add_patch(plt.Circle((0, -1.7), 0.35, color=color))
+
+
+def glyph_water(ax, color):
+    x = np.linspace(-1.6, 1.6, 100)
+    for i, dy in enumerate([0.7, 0, -0.7]):
+        y = 0.3 * np.sin(3 * x + i) + dy
+        ax.plot(x, y, color=color, lw=4)
+
+
+def glyph_bandage(ax, color):
+    ax.add_patch(plt.Rectangle((-1.2, -0.35), 2.4, 0.7, color=color))
+    ax.add_patch(plt.Rectangle((-0.35, -1.2), 0.7, 2.4, color=color))
+
+
+def glyph_elevate(ax, color):
+    ax.annotate("", xy=(0, 1.7), xytext=(0, -1.7), arrowprops=dict(arrowstyle="-|>", color=color, lw=6))
+
+
+def glyph_shade(ax, color):
+    ax.add_patch(plt.Polygon([(-1.2, 0.6), (1.2, 0.6), (0, 1.9)], closed=True, color=color))
+    ax.plot([0, 0], [0.6, -1.5], lw=6, color=color)
+
+
+def glyph_cutpower(ax, color):
+    ax.add_patch(plt.Rectangle((-1, -1.6), 2, 3.2, fill=False, lw=4, edgecolor=color))
+    ax.plot([0, 0.7], [-0.3, 1.1], lw=5, color=color)
+    ax.add_patch(plt.Circle((0, -0.3), 0.12, color=color))
+
+
+def glyph_insulate(ax, color):
+    ax.plot([-1.7, 1.7], [0.6, -0.6], lw=3, color=color)
+    ax.plot([0, 1.3], [0, 1.5], lw=5, color=color)
+
+
+def glyph_crouch(ax, color):
+    ax.add_patch(plt.Circle((-0.8, 0.7), 0.4, fill=False, lw=4, edgecolor=color))
+    ax.plot([-0.8, 0.8], [0.3, -0.3], lw=5, color=color)
+    ax.plot([0.8, 1.5], [-0.3, -0.1], lw=5, color=color)
+    for i in range(3):
+        xs = np.linspace(-1.6, 1.6, 30)
+        ys = 0.15 * np.sin(6 * xs + i) + 1.6 + i * 0.4
+        ax.plot(xs, ys, color=color, lw=2, alpha=0.6)
+
+
+def glyph_exitdoor(ax, color):
+    ax.add_patch(plt.Rectangle((-1.3, -1.6), 1.6, 3.2, fill=False, lw=4, edgecolor=color))
+    ax.annotate("", xy=(1.9, 0), xytext=(0.3, 0), arrowprops=dict(arrowstyle="-|>", color=color, lw=5))
+
+
+def glyph_caution(ax, color):
+    ax.add_patch(plt.Polygon([(-1.5, -1.2), (1.5, -1.2), (0, 1.6)], closed=True, fill=False, lw=5, edgecolor=color))
+    ax.text(0, -0.3, "!", fontsize=40, ha="center", va="center", color=color, fontweight="bold")
+
+
+def glyph_fire(ax, color):
+    verts = [(-0.6, -1.5), (-0.9, 0.2), (-0.2, 0.4), (-0.4, 1.0), (0.3, 0.6), (0.2, 1.7), (0.9, 0.3), (0.5, -0.3), (0.7, -1.5)]
+    ax.add_patch(plt.Polygon(verts, closed=True, color=color))
+
+
+def glyph_shelter(ax, color):
+    ax.add_patch(plt.Rectangle((-1.7, 0.4), 3.4, 0.5, color=color))
+    ax.plot([-1.4, -1.4], [0.4, -1.6], lw=5, color=color)
+    ax.plot([1.4, 1.4], [0.4, -1.6], lw=5, color=color)
+
+
+def glyph_openspace(ax, color):
+    ax.plot([-1.8, 1.8], [-1.2, -1.2], lw=4, color=color)
+    ax.add_patch(plt.Circle((0, -0.3), 0.35, fill=False, lw=4, edgecolor=color))
+    ax.plot([0, 0], [-0.65, -1.2], lw=4, color=color)
+    ax.annotate("", xy=(1.6, -0.3), xytext=(0.5, -0.3), arrowprops=dict(arrowstyle="-|>", color=color, lw=3))
+
+
+def glyph_throwring(ax, color):
+    ax.add_patch(plt.Circle((0, 0), 1.4, fill=False, lw=6, edgecolor=color))
+    ax.add_patch(plt.Circle((0, 0), 0.7, fill=False, lw=6, edgecolor=color))
+
+
+def glyph_recovery(ax, color):
+    ax.add_patch(plt.Circle((-1.2, -0.6), 0.5, fill=False, lw=4, edgecolor=color))
+    ax.plot([-0.7, 1.3], [-0.6, -0.6], lw=5, color=color)
+    ax.plot([1.3, 1.6], [-0.6, -0.05], lw=4, color=color)
+
+
+def glyph_press(ax, color):
+    ax.add_patch(plt.Rectangle((-1.1, -0.4), 2.2, 0.8, color=color))
+    ax.annotate("", xy=(0, 0.2), xytext=(0, 1.4), arrowprops=dict(arrowstyle="-|>", color=color, lw=4))
+
+
+def glyph_alert(ax, color):
+    ax.add_patch(mpatches.FancyBboxPatch((-1.6, -0.2), 3.2, 1.6, boxstyle="round,pad=0.1",
+                                          fill=False, lw=4, edgecolor=color))
+    ax.plot([-0.4, -0.8], [-0.2, -1.3], lw=4, color=color)
+    ax.text(0, 0.6, "!", fontsize=36, ha="center", va="center", color=color, fontweight="bold")
+
+
+GLYPHS = {
+    "call": glyph_call, "check": glyph_check, "compress": glyph_compress, "aed": glyph_aed,
+    "heimlich": glyph_heimlich, "water": glyph_water, "bandage": glyph_bandage, "elevate": glyph_elevate,
+    "shade": glyph_shade, "cutpower": glyph_cutpower, "insulate": glyph_insulate, "crouch": glyph_crouch,
+    "exitdoor": glyph_exitdoor, "caution": glyph_caution, "fire": glyph_fire, "shelter": glyph_shelter,
+    "openspace": glyph_openspace, "throwring": glyph_throwring, "recovery": glyph_recovery, "press": glyph_press,
+    "alert": glyph_alert,
+}
+
+PANEL_COLORS = ["#2f6fed", "#d62828", "#2a9d8f", "#f2994a"]
+
+PICTO = {
+    "심정지 (심폐소생술)": [("check", "반응·호흡 확인"), ("call", "119 신고"), ("compress", "가슴압박 30회"), ("aed", "AED 사용")],
+    "기도 폐쇄 (하임리히법)": [("check", "기침 유도"), ("heimlich", "하임리히법 시행"), ("call", "119 신고"), ("compress", "의식소실 시 CPR")],
+    "화상": [("water", "찬물로 냉각"), ("caution", "물집 유지"), ("bandage", "거즈로 덮기"), ("call", "심하면 119")],
+    "출혈": [("press", "직접 압박"), ("elevate", "부위 높이기"), ("bandage", "붕대로 고정"), ("call", "지속되면 119")],
+    "열사병 / 온열질환": [("shade", "그늘로 이동"), ("water", "체온 낮추기"), ("check", "의식 확인"), ("call", "119 신고")],
+    "감전 사고": [("cutpower", "전원 차단"), ("insulate", "절연물로 분리"), ("check", "반응 확인"), ("compress", "필요시 CPR")],
+    "화재": [("fire", "화재 알리기"), ("crouch", "낮은 자세로 이동"), ("exitdoor", "대피 · 재진입 금지"), ("call", "119 신고")],
+    "지진": [("shelter", "탁자 아래 대피"), ("cutpower", "가스·전기 차단"), ("exitdoor", "출구 확보"), ("openspace", "넓은 공간 이동")],
+    "물놀이 안전사고 (익수)": [("throwring", "구조장비로 구조"), ("check", "반응 확인"), ("compress", "필요시 CPR"), ("recovery", "회복자세 유지")],
+}
+
+
+@st.cache_data(show_spinner=False)
+def build_icon_figure(icon_key, color):
+    """아이콘 도형만 그린 작은 figure를 반환합니다.
+    (그림 안에 한글 텍스트를 넣지 않아, 폰트에 한글이 없는 환경에서도 깨지지 않습니다.)"""
+    fig, ax = plt.subplots(figsize=(1.8, 1.8))
+    ax.set_xlim(-2.3, 2.3)
+    ax.set_ylim(-2.3, 2.3)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    GLYPHS[icon_key](ax, color)
+    fig.tight_layout(pad=0.3)
+    return fig
+
+
+def get_pictogram_items(situation_name):
+    """(figure, 캡션) 4개를 반환. 캡션은 실제 화면에 st로 그릴 텍스트라 한글이 깨지지 않습니다."""
+    items = []
+    for idx, (icon_key, caption) in enumerate(PICTO[situation_name]):
+        color = PANEL_COLORS[idx % len(PANEL_COLORS)]
+        fig = build_icon_figure(icon_key, color)
+        items.append((fig, caption))
+    return items
 
 # ============================================================================
 # 데이터: 상황별 응급처치 (소방청·국민재난안전포털 자료를 참고해 일반인 기준으로 정리)
@@ -183,12 +364,27 @@ LOCATIONS = {
 
 def render_situation(name):
     data = SITUATIONS[name]
-    st.error(f"119 신고: {data['call_119']}")
-    st.markdown("**대응 순서**")
-    for i, step in enumerate(data["steps"], start=1):
-        st.write(f"{i}. {step}")
-    if data["cautions"]:
-        st.warning("주의사항\n\n" + "\n".join(f"- {c}" for c in data["cautions"]))
+    items = get_pictogram_items(name)
+
+    col_pic, col_text = st.columns([1, 1.4])
+    with col_pic:
+        row1 = st.columns(2)
+        row2 = st.columns(2)
+        grid_cols = row1 + row2
+        for i, (fig, caption) in enumerate(items):
+            with grid_cols[i]:
+                st.pyplot(fig, use_container_width=True)
+                st.markdown(
+                    f"<p style='text-align:center; font-weight:600; margin-top:-8px;'>{i + 1}. {caption}</p>",
+                    unsafe_allow_html=True,
+                )
+    with col_text:
+        st.error(f"119 신고: {data['call_119']}")
+        st.markdown("**대응 순서**")
+        for i, step in enumerate(data["steps"], start=1):
+            st.write(f"{i}. {step}")
+        if data["cautions"]:
+            st.warning("주의사항\n\n" + "\n".join(f"- {c}" for c in data["cautions"]))
 
 
 # ============================================================================
